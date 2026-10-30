@@ -14,6 +14,7 @@ write_files:
       GITHUB_TOKEN=__GITHUB_TOKEN__
       HF_TOKEN=__HF_TOKEN__
       GRACE_MINUTES=__GRACE_MINUTES__
+      DRY_RUN=__DRY_RUN__
 
   - path: /usr/local/bin/bench-selfdestruct
     permissions: "0755"

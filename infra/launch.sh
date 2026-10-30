@@ -2,7 +2,8 @@
 # Launch one ephemeral benchmark VM. It clones this repo, benchmarks, pushes
 # results to GitHub and deletes its own resource group.
 #
-# Usage:   infra/launch.sh <machine> [--follow]
+# Usage:   infra/launch.sh <machine> [--follow] [--dry-run]
+#          --dry-run: boot, clone, check docker/GPU, push system.json, self-destruct (no models)
 # Env:     GITHUB_TOKEN  fine-grained PAT, "Contents: read & write" on this repo only (required)
 #          HF_TOKEN      Hugging Face token (only for gated models)
 #          REPO          owner/repo (default: parsed from `git remote get-url origin`)
@@ -11,8 +12,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-MACHINE=${1:?usage: infra/launch.sh <machine> [--follow]}
-FOLLOW=${2:-}
+MACHINE=${1:?usage: infra/launch.sh <machine> [--follow] [--dry-run]}
+FOLLOW="" DRY_RUN=""
+for arg in "${@:2}"; do
+  case "$arg" in
+    --follow) FOLLOW=--follow ;;
+    --dry-run) DRY_RUN=1 ;;
+    *) echo "unknown option $arg" >&2; exit 1 ;;
+  esac
+done
 : "${GITHUB_TOKEN:?export GITHUB_TOKEN (fine-grained PAT with contents:write on this repo)}"
 REPO=${REPO:-$(git remote get-url origin | sed -E 's#(git@github.com:|https://github.com/)##; s#\.git$##')}
 BRANCH=${BRANCH:-$(git branch --show-current)}
@@ -38,6 +46,8 @@ for k, v in [("SIZE", p["size"]), ("REGION", p["region"]), ("SPOT", str(p["spot"
 EOF
 )"
 
+[ -n "$DRY_RUN" ] && MAX_HOURS=1      # a flow check needs ~10 min; keep the kill switch tight
+
 STAMP=$(date -u +%Y%m%d-%H%M%S)
 RG="llmbench-${MACHINE}-${STAMP}"
 VM="bench"
@@ -46,10 +56,10 @@ trap 'rm -f "$CLOUD_INIT"' EXIT
 
 sed -e "s|__REPO__|$REPO|" -e "s|__BRANCH__|$BRANCH|" -e "s|__MACHINE__|$MACHINE|" \
     -e "s|__GITHUB_TOKEN__|$GITHUB_TOKEN|" -e "s|__HF_TOKEN__|${HF_TOKEN:-}|" \
-    -e "s|__MAX_HOURS__|$MAX_HOURS|" -e "s|__GRACE_MINUTES__|$GRACE_MINUTES|" \
+    -e "s|__MAX_HOURS__|$MAX_HOURS|" -e "s|__GRACE_MINUTES__|$GRACE_MINUTES|" -e "s|__DRY_RUN__|$DRY_RUN|" \
     infra/cloud-init.yaml.tpl > "$CLOUD_INIT"
 
-echo "==> $MACHINE: $SIZE in $REGION (spot=$SPOT, kill switch ${MAX_HOURS}h) -> resource group $RG"
+echo "==> $MACHINE: $SIZE in $REGION (spot=$SPOT, kill switch ${MAX_HOURS}h${DRY_RUN:+, DRY RUN}) -> resource group $RG"
 az group create -n "$RG" -l "$REGION" -o none \
   --tags purpose=llm-bench machine="$MACHINE" expires="$(date -u -d "+${MAX_HOURS} hours" +%FT%TZ)"
 RG_ID=$(az group show -n "$RG" --query id -o tsv)

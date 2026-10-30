@@ -17,7 +17,8 @@ USABLE_TTFT_S = 5
 
 def latest_runs():
     for mdir in sorted((ROOT / "results").glob("*/")):
-        runs = sorted(r for r in mdir.iterdir() if (r / "system.json").exists())
+        runs = sorted(r for r in mdir.iterdir() if (r / "system.json").exists()
+                      and not json.loads((r / "system.json").read_text()).get("dry_run"))
         if runs:
             yield runs[-1]
 

@@ -24,6 +24,11 @@ defaults:
 
 machines:
   # --- CPU only -----------------------------------------------------------
+  cpu-d2s-v5:                  # 2 vCPU, 8 GB — for `launch.sh cpu-d2s-v5 --dry-run` flow checks
+    size: Standard_D2s_v5
+    concurrency: [1]
+    tags: [smoke]
+
   cpu-d8s-v5:                  # 8 vCPU Intel, 32 GB
     size: Standard_D8s_v5
     concurrency: [1, 4]

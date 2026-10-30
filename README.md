@@ -62,6 +62,20 @@ the GPU/driver are recorded with each run.
 
 ## Running
 
+**First Azure test: flow check (no benchmark).** It boots a 2 vCPU spot VM, clones the repo,
+checks Docker (and GPU access from containers on GPU sizes), looks up live prices, pushes
+`results/<machine>/<ts>/system.json` and deletes itself. It takes about 10 minutes, costs about $0.01,
+and has a 1 h kill switch. Dry runs are ignored by `report.py`.
+
+```bash
+export GITHUB_TOKEN=github_pat_...
+infra/launch.sh cpu-d2s-v5 --dry-run --follow
+git pull && cat results/cpu-d2s-v5/*/system.json      # proof the whole loop works
+infra/cleanup.sh                                       # should list nothing
+# then the same for a GPU size to validate drivers before paying for a real run:
+infra/launch.sh gpu-t4 --dry-run --follow
+```
+
 ```bash
 # 0. free local smoke test (needs Docker only)
 python3 bench/run.py --machine local --tags smoke --concurrency 1 2

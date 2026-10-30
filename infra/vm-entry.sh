@@ -39,7 +39,7 @@ git config user.name "llm-bench ($MACHINE)"
 git config user.email "llm-bench@users.noreply.github.com"
 
 status=0
-python3 bench/run.py --machine "$MACHINE" --push || status=$?
+python3 bench/run.py --machine "$MACHINE" --push ${DRY_RUN:+--dry-run} || status=$?
 
 # Attach the VM log to the run for debugging.
 run_dir=$(ls -d results/"$MACHINE"/*/ 2>/dev/null | sort | tail -1 || true)

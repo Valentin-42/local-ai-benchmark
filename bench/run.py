@@ -252,6 +252,8 @@ def main():
     ap.add_argument("--no-usecases", action="store_true", help="skip the use-case phase")
     ap.add_argument("--usecase-min-tok-s", type=float, help="override the tg128 gate (usecases.min_tg_tok_s)")
     ap.add_argument("--push", action="store_true", help="git commit + push after each model")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="validate the machine only: docker image + GPU access, no models")
     args = ap.parse_args()
 
     machines = yaml.safe_load((ROOT / "config/machines.yaml").read_text())
@@ -278,12 +280,25 @@ def main():
     sysinfo = system_info(args.machine, profile.get("spot", False))
     gpu = bool(sysinfo["gpus"])
     image = f"{IMAGE}:{TAG_GPU if gpu else TAG_CPU}"
-    sysinfo.update({"image": image, "concurrency": concurrency, "started_utc": stamp})
+    sysinfo.update({"image": image, "concurrency": concurrency, "started_utc": stamp,
+                    "dry_run": args.dry_run})
     (run_dir / "system.json").write_text(json.dumps(sysinfo, indent=2))
     log(f"{args.machine}: {sysinfo['cpu']} | {sysinfo['ram_gb']} GB | gpus={sysinfo['gpus']} | prices={sysinfo['prices']}")
 
     log(f"pulling {image}")
     subprocess.run(["docker", "pull", "-q", image], check=True)
+    if args.dry_run:
+        r = sh(docker_run(gpu, models_dir, "--rm") + ["--entrypoint", "/app/llama", image, "version"])
+        sysinfo["llama_version"] = (r.stdout + r.stderr).strip()[-500:]
+        if gpu:  # proves the GPU is reachable from containers (driver + nvidia-container-toolkit)
+            r = sh(docker_run(gpu, models_dir, "--rm") + ["--entrypoint", "nvidia-smi", image, "-L"])
+            sysinfo["container_gpus"] = r.stdout.strip()
+        (run_dir / "system.json").write_text(json.dumps(sysinfo, indent=2))
+        (run_dir / "DONE").write_text(dt.datetime.now(dt.timezone.utc).isoformat())
+        log(f"dry run ok: {sysinfo['llama_version']} {sysinfo.get('container_gpus', '')}")
+        if args.push:
+            git_push([run_dir], f"chore(results): {args.machine} dry run {stamp}")
+        return
     if args.push:
         git_push([run_dir], f"chore(results): {args.machine} start run {stamp}")
 
