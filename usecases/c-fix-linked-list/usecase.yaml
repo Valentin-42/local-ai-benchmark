@@ -1,0 +1,19 @@
+id: c-fix-linked-list
+description: Segfault when removing the last node of a doubly linked list
+tags: [c, bugfix, default]
+files: [list.c, list.h, main.c, Makefile]   # paths under files/, inlined into the prompt (in this order)
+prompt: |
+  I have a small C program (a doubly linked list). It compiles without warnings
+  (`make` uses `gcc -Wall -Wextra`) but crashes at runtime:
+
+      $ make && ./main
+      [1, 2, 3, 4, 5] (size 5)
+      [1, 2, 4, 5] (size 4)
+      Segmentation fault (core dumped)
+
+  The crash happens in list_remove() when the node being removed is the last one.
+  Fix the error. Return every file you change in full, each in a fenced code block
+  whose first line is `// file: <name>`.
+
+  {files}
+max_tokens: 4096

@@ -1,0 +1,61 @@
+# Azure machines to benchmark. One entry = one ephemeral VM run.
+#
+# Prices are NOT hardcoded: the VM fetches the live on-demand and spot price
+# for its own size/region from the public Azure Retail Prices API and stores it
+# with the results, so $/1M-token figures are always based on real prices.
+#
+# Before using a GPU size, check your quota (new subscriptions usually have 0):
+#   az vm list-usage -l <region> -o table | grep -Ei 'spot|lowpriority|NCAS|NCADS'
+
+defaults:
+  region: swedencentral        # often cheap with good GPU availability; change freely
+  spot: true                   # 60-90% cheaper; may be evicted (results are pushed per model)
+  max_hours: 3                 # hard kill switch: the VM deletes its resource group after this
+  os_disk_gb: 128
+  cpu_image: Canonical:ubuntu-24_04-lts:server:latest
+  gpu_image: microsoft-dsvm:ubuntu-hpc:2204:latest   # ships NVIDIA driver + CUDA
+  concurrency: [1, 4, 8, 16]   # parallel users simulated by the load test
+  tags: [default]              # which models (see models.yaml) to run
+  usecases:                    # real tasks per model (see usecases/); a machine can override single keys
+    enabled: true
+    tags: [default]            # which use-cases to run
+    min_tg_tok_s: 3            # skip use-cases if llama-bench tg128 is slower than this
+    ctx: 32768                 # context of the single-slot server used for use-cases
+
+machines:
+  # --- CPU only -----------------------------------------------------------
+  cpu-d8s-v5:                  # 8 vCPU Intel, 32 GB
+    size: Standard_D8s_v5
+    concurrency: [1, 4]
+    tags: [small, medium]
+
+  cpu-d16as-v5:                # 16 vCPU AMD EPYC, 64 GB
+    size: Standard_D16as_v5
+    concurrency: [1, 4]
+    tags: [small, medium, large]
+
+  cpu-e16-v5:                  # 16 vCPU Intel, 128 GB (memory optimized)
+    size: Standard_E16s_v5
+    concurrency: [1, 4]
+    tags: [small, medium, large]
+
+  # --- GPU ----------------------------------------------------------------
+  gpu-t4:                      # 1x T4 16 GB, 4 vCPU, 28 GB — cheapest GPU
+    size: Standard_NC4as_T4_v3
+    gpu: true
+    tags: [small, medium]
+
+  gpu-a100:                    # 1x A100 80 GB
+    size: Standard_NC24ads_A100_v4
+    gpu: true
+    os_disk_gb: 256
+    tags: [small, medium, large]
+
+  gpu-h100:                    # 1x H100 NVL 94 GB
+    size: Standard_NC40ads_H100_v5
+    gpu: true
+    os_disk_gb: 256
+    tags: [small, medium, large]
+
+  # Note: NVads A10 v5 sizes need the NVIDIA GRID driver and are not supported
+  # by the gpu_image above.
