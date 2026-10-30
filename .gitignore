@@ -1,0 +1,16 @@
+# Claude workspace state — contains credentials, never commit
+.claude/
+start-claude.sh
+
+# Secrets / local env
+.env
+*.pem
+infra/.ssh/
+
+# Local model cache and scratch
+.cache/
+__pycache__/
+
+# Local smoke-test results
+results/local/
+models/
