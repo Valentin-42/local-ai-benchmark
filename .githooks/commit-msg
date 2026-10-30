@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Reject commit messages that are not Conventional Commits (needed by git-cliff).
+# Enable once per clone:  git config core.hooksPath .githooks
+first=$(head -1 "$1")
+types="feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert"
+if ! grep -qE "^($types)(\([a-z0-9._-]+\))?!?: .+" <<<"$first" && ! grep -qE "^(Merge|Revert|fixup!|squash!) " <<<"$first"; then
+  cat >&2 <<EOF
+commit-msg: "$first"
+  is not a Conventional Commit. Use:  <type>(<scope>): <description>
+  types: ${types//|/, }      e.g.  feat(usecases): add rust compile-error use-case
+EOF
+  exit 1
+fi
