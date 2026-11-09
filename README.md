@@ -89,6 +89,30 @@ infra/launch.sh gpu-t4     --follow
 git pull && python3 bench/report.py     # writes results/SUMMARY.md
 ```
 
+### Manually provisioned VM
+
+If you provision the VM yourself, connect to it, and clone this repository,
+run the same benchmark without Azure provisioning, automatic pushes, or
+self-deletion:
+
+```bash
+# On an Ubuntu 22.04 or 24.04 VM, from the cloned repository:
+bash infra/manual-run.sh gpu-t4
+```
+
+The machine name selects its profile from `config/machines.yaml`, including
+model tags and concurrency. The script installs Docker and the Python/YAML
+dependencies; on GPU VMs it also configures NVIDIA Container Toolkit (the host
+NVIDIA driver must already work). Package installation uses `sudo`. Results
+stay in `results/<machine>/<run>/` and are not committed or pushed by the
+script, so review and publish them yourself:
+
+```bash
+git add results/<machine>/<run>
+git commit -m "chore(results): <machine> manual benchmark"
+git push
+```
+
 Machines live in `config/machines.yaml`, models in `config/models.yaml`. A model is
 skipped automatically if it doesn't fit in VRAM (GPU) or RAM (CPU).
 

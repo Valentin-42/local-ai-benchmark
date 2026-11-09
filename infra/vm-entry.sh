@@ -7,25 +7,7 @@ cd /opt/bench
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
 log "bootstrap on $(hostname) machine=$MACHINE"
-
-if ! command -v docker >/dev/null; then
-  log "installing docker"
-  apt-get install -y -q docker.io >/dev/null
-fi
-
-if lspci | grep -qi nvidia; then
-  nvidia-smi >/dev/null || { log "GPU present but nvidia-smi fails (use the GPU image)"; exit 1; }
-  if ! docker info 2>/dev/null | grep -qi 'runtimes:.*nvidia'; then
-    log "installing nvidia-container-toolkit"
-    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
-      | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-    curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
-      | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' \
-      > /etc/apt/sources.list.d/nvidia-container-toolkit.list
-    apt-get update -q >/dev/null && apt-get install -y -q nvidia-container-toolkit >/dev/null
-    nvidia-ctk runtime configure --runtime=docker && systemctl restart docker
-  fi
-fi
+bash /opt/bench/infra/setup-benchmark.sh
 
 # Put models on the largest local disk (the temp disk /mnt when the size has one).
 export MODELS_DIR=/var/lib/bench-models
